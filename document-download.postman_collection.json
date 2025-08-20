@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Document Download Flow",
+    "_postman_id": "caf-library-download-flow",
+    "description": "Test download file from document (with/without payment)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Purchase file (if paid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/documents/{{documentId}}/files/{{fileId}}/purchase",
+          "host": ["{{baseUrl}}"],
+          "path": [
+            "documents",
+            "{{documentId}}",
+            "files",
+            "{{fileId}}",
+            "purchase"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Download file",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/documents/{{documentId}}/files/{{fileId}}/download",
+          "host": ["{{baseUrl}}"],
+          "path": [
+            "documents",
+            "{{documentId}}",
+            "files",
+            "{{fileId}}",
+            "download"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "documentId",
+      "value": ""
+    },
+    {
+      "key": "fileId",
+      "value": ""
+    }
+  ]
+}

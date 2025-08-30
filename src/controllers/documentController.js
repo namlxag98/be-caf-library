@@ -283,15 +283,24 @@ export const getDocuments = asyncHandler(async (req, res) => {
   // Build search query
   let searchQuery = {};
 
-  // Text search
+  // Mặc định chỉ lấy tài liệu đã được duyệt
+  searchQuery.trangThaiDuyet = "da_duyet";
+
+  // Text search - sửa logic để tìm kiếm linh hoạt hơn
   if (q) {
-    if (language === "vi") {
-      searchQuery.$text = { $search: q };
-    } else if (language === "en") {
-      searchQuery.$text = { $search: q };
-    } else {
-      searchQuery.$text = { $search: q };
-    }
+    // Tìm kiếm trong nhiều trường thay vì chỉ dùng $text
+    const searchRegex = { $regex: q, $options: "i" };
+    searchQuery.$or = [
+      { "thongTinDaNgonNgu.tieuDe.vi": searchRegex },
+      { "thongTinDaNgonNgu.tieuDe.en": searchRegex },
+      { "thongTinDaNgonNgu.tomTat.vi": searchRegex },
+      { "thongTinDaNgonNgu.tomTat.en": searchRegex },
+      { "thongTinDaNgonNgu.tuKhoa.vi": searchRegex },
+      { "thongTinDaNgonNgu.tuKhoa.en": searchRegex },
+      { "searchMetadata.searchTextVi": searchRegex },
+      { "searchMetadata.searchTextEn": searchRegex },
+      { "searchMetadata.allKeywords": searchRegex }
+    ];
   }
 
   // Filters
@@ -320,7 +329,7 @@ export const getDocuments = asyncHandler(async (req, res) => {
     searchQuery["searchMetadata.filterTags.tinhTrang"] = status;
   }
 
-  // Lọc theo trạng thái duyệt tài liệu
+  // Ghi đè trạng thái duyệt nếu được chỉ định
   if (req.query.trangThaiDuyet) {
     searchQuery.trangThaiDuyet = req.query.trangThaiDuyet;
   }
@@ -330,6 +339,9 @@ export const getDocuments = asyncHandler(async (req, res) => {
   } else if (pricing === "tra_phi") {
     searchQuery["gia.mienPhi"] = false;
   }
+
+  // Log query để debug
+  console.log("Search Query:", JSON.stringify(searchQuery, null, 2));
 
   // Pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -347,6 +359,10 @@ export const getDocuments = asyncHandler(async (req, res) => {
       .limit(parseInt(limit)),
     Document.countDocuments(searchQuery),
   ]);
+
+  // Log results để debug
+  console.log("Found documents:", documents.length);
+  console.log("Total count:", totalCount);
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / parseInt(limit));

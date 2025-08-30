@@ -157,16 +157,23 @@ const documentSchema = new mongoose.Schema(
 
 // Create text indexes for search
 documentSchema.index({
-  "searchMetadata.searchTextVi": "text",
-  "searchMetadata.searchTextEn": "text",
+  "thongTinDaNgonNgu.tieuDe.vi": "text",
+  "thongTinDaNgonNgu.tieuDe.en": "text",
+  "thongTinDaNgonNgu.tomTat.vi": "text",
+  "thongTinDaNgonNgu.tomTat.en": "text",
   "thongTinDaNgonNgu.tuKhoa.vi": "text",
   "thongTinDaNgonNgu.tuKhoa.en": "text",
+  "searchMetadata.searchTextVi": "text",
+  "searchMetadata.searchTextEn": "text",
+  "searchMetadata.allKeywords": "text"
 });
 
 // Compound indexes
-documentSchema.index({
-  "searchMetadata.filterTags.tinhTrang": 1,
-});
+documentSchema.index({ trangThaiDuyet: 1 });
+documentSchema.index({ "searchMetadata.filterTags.tinhTrang": 1 });
 documentSchema.index({ danhMuc: 1, "searchMetadata.filterTags.namXuatBan": 1 });
+documentSchema.index({ trangThaiDuyet: 1, danhMuc: 1 });
+documentSchema.index({ trangThaiDuyet: 1, createdAt: -1 });
+documentSchema.index({ trangThaiDuyet: 1, "thongKe.luotXem": -1 });
 
 export default mongoose.model("Document", documentSchema);

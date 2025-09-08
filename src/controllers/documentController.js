@@ -225,7 +225,7 @@ export const createDocument = asyncHandler(async (req, res) => {
 
   // Set approval status based on user role
   let trangThaiDuyet = "cho_duyet";
-  if (req.user.vaiTro === "admin" || req.user.vaiTro === "teacher") {
+  if (req.user.vaiTro === "admin") {
     trangThaiDuyet = "da_duyet";
   }
 
@@ -283,8 +283,34 @@ export const getDocuments = asyncHandler(async (req, res) => {
   // Build search query
   let searchQuery = {};
 
-  // Mặc định chỉ lấy tài liệu đã được duyệt
-  searchQuery.trangThaiDuyet = "da_duyet";
+  // Set default filter based on user role and authentication
+  if (req.user) {
+    const isAdmin = req.user.vaiTro === "admin";
+    const isTeacher = req.user.vaiTro === "teacher";
+    
+    if (isAdmin) {
+      // Admin can see all documents by default, but can filter by status
+      if (!req.query.trangThaiDuyet) {
+        // If no status filter specified, show all documents
+        delete searchQuery.trangThaiDuyet;
+      }
+    } else if (isTeacher) {
+      // Teacher can see their own documents (any status) + others' approved documents
+      if (!req.query.trangThaiDuyet) {
+        searchQuery.$or = [
+          { nguoiUpload: req.userId }, // Own documents (any status)
+          { trangThaiDuyet: "da_duyet" } // Others' approved documents
+        ];
+        delete searchQuery.trangThaiDuyet;
+      }
+    } else {
+      // Regular users can only see approved documents
+      searchQuery.trangThaiDuyet = "da_duyet";
+    }
+  } else {
+    // Public access - only approved documents
+    searchQuery.trangThaiDuyet = "da_duyet";
+  }
 
   // Text search - sửa logic để tìm kiếm linh hoạt hơn
   if (q) {
@@ -329,8 +355,12 @@ export const getDocuments = asyncHandler(async (req, res) => {
     searchQuery["searchMetadata.filterTags.tinhTrang"] = status;
   }
 
-  // Ghi đè trạng thái duyệt nếu được chỉ định
+  // Override status filter if explicitly specified
   if (req.query.trangThaiDuyet) {
+    // If status is explicitly requested, use it and remove the $or condition
+    if (searchQuery.$or) {
+      delete searchQuery.$or;
+    }
     searchQuery.trangThaiDuyet = req.query.trangThaiDuyet;
   }
 
@@ -394,6 +424,41 @@ export const getDocumentById = asyncHandler(async (req, res) => {
       success: false,
       message: "Document not found",
     });
+  }
+
+  // Check viewing permissions based on role and ownership
+  if (req.user) {
+    const isOwner = document.nguoiUpload.toString() === req.userId.toString();
+    const isAdmin = req.user.vaiTro === "admin";
+    const isTeacher = req.user.vaiTro === "teacher";
+    
+    if (isAdmin) {
+      // Admin can view all documents
+    } else if (isTeacher) {
+      // Teacher can view their own documents (any status) or others' approved documents
+      if (!isOwner && document.trangThaiDuyet !== "da_duyet") {
+        return res.status(httpStatus.FORBIDDEN).json({
+          success: false,
+          message: "Bạn không có quyền xem tài liệu này",
+        });
+      }
+    } else {
+      // Regular users can only view approved documents
+      if (document.trangThaiDuyet !== "da_duyet") {
+        return res.status(httpStatus.FORBIDDEN).json({
+          success: false,
+          message: "Bạn không có quyền xem tài liệu này",
+        });
+      }
+    }
+  } else {
+    // Public access - only approved documents
+    if (document.trangThaiDuyet !== "da_duyet") {
+      return res.status(httpStatus.FORBIDDEN).json({
+        success: false,
+        message: "Bạn không có quyền xem tài liệu này",
+      });
+    }
   }
 
   // Increment view count
@@ -472,15 +537,29 @@ export const updateDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  // Kiểm tra quyền sở hữu
-  if (
-    document.nguoiUpload.toString() !== req.userId.toString() &&
-    req.user.vaiTro !== "admin"
-  ) {
-    return res.status(httpStatus.FORBIDDEN).json({
-      success: false,
-      message: "Bạn không có quyền cập nhật tài liệu này",
-    });
+  // Check editing permissions based on role and ownership
+  const isOwner = document.nguoiUpload.toString() === req.userId.toString();
+  const isAdmin = req.user.vaiTro === "admin";
+  const isTeacher = req.user.vaiTro === "teacher";
+  
+  if (isAdmin) {
+    // Admin can edit all documents
+  } else if (isTeacher) {
+    // Teacher can only edit their own documents
+    if (!isOwner) {
+      return res.status(httpStatus.FORBIDDEN).json({
+        success: false,
+        message: "Bạn chỉ có thể sửa tài liệu của mình",
+      });
+    }
+  } else {
+    // Regular users can only edit their own documents
+    if (!isOwner) {
+      return res.status(httpStatus.FORBIDDEN).json({
+        success: false,
+        message: "Bạn chỉ có thể sửa tài liệu của mình",
+      });
+    }
   }
 
   // Nếu là admin, có thể cập nhật mọi trường
@@ -545,15 +624,29 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  // Kiểm tra quyền sở hữu
-  if (
-    document.nguoiUpload.toString() !== req.userId.toString() &&
-    req.user.vaiTro !== "admin"
-  ) {
-    return res.status(httpStatus.FORBIDDEN).json({
-      success: false,
-      message: "Bạn không có quyền xóa tài liệu này",
-    });
+  // Check deletion permissions based on role and ownership
+  const isOwner = document.nguoiUpload.toString() === req.userId.toString();
+  const isAdmin = req.user.vaiTro === "admin";
+  const isTeacher = req.user.vaiTro === "teacher";
+  
+  if (isAdmin) {
+    // Admin can delete all documents
+  } else if (isTeacher) {
+    // Teacher can only delete their own documents
+    if (!isOwner) {
+      return res.status(httpStatus.FORBIDDEN).json({
+        success: false,
+        message: "Bạn chỉ có thể xóa tài liệu của mình",
+      });
+    }
+  } else {
+    // Regular users can only delete their own documents
+    if (!isOwner) {
+      return res.status(httpStatus.FORBIDDEN).json({
+        success: false,
+        message: "Bạn chỉ có thể xóa tài liệu của mình",
+      });
+    }
   }
 
   // Xóa file từ Google Drive
@@ -595,7 +688,7 @@ export const approveDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  if (document.trangThai !== "pending") {
+  if (document.trangThaiDuyet !== "cho_duyet") {
     return res.status(httpStatus.BAD_REQUEST).json({
       success: false,
       message: "Tài liệu không ở trạng thái chờ duyệt",
@@ -609,7 +702,7 @@ export const approveDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  document.trangThai = "approved";
+  document.trangThaiDuyet = "da_duyet";
   document.nguoiDuyet = req.userId;
   document.ngayDuyet = new Date();
   document.lyDoTuChoi = null;
@@ -658,7 +751,7 @@ export const rejectDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  if (document.trangThai !== "pending") {
+  if (document.trangThaiDuyet !== "cho_duyet") {
     return res.status(httpStatus.BAD_REQUEST).json({
       success: false,
       message: "Tài liệu không ở trạng thái chờ duyệt",
@@ -672,7 +765,7 @@ export const rejectDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  document.trangThai = "rejected";
+  document.trangThaiDuyet = "tu_choi";
   document.nguoiDuyet = req.userId;
   document.ngayDuyet = new Date();
   document.lyDoTuChoi = lyDoTuChoi;
@@ -710,11 +803,17 @@ export const searchDocuments = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const query = {
-    trangThai: "approved",
+    trangThaiDuyet: "da_duyet",
     $or: [
-      { tieuDe: { $regex: q, $options: "i" } },
-      { moTa: { $regex: q, $options: "i" } },
-      { tuKhoa: { $regex: q, $options: "i" } },
+      { "thongTinDaNgonNgu.tieuDe.vi": { $regex: q, $options: "i" } },
+      { "thongTinDaNgonNgu.tieuDe.en": { $regex: q, $options: "i" } },
+      { "thongTinDaNgonNgu.tomTat.vi": { $regex: q, $options: "i" } },
+      { "thongTinDaNgonNgu.tomTat.en": { $regex: q, $options: "i" } },
+      { "thongTinDaNgonNgu.tuKhoa.vi": { $regex: q, $options: "i" } },
+      { "thongTinDaNgonNgu.tuKhoa.en": { $regex: q, $options: "i" } },
+      { "searchMetadata.searchTextVi": { $regex: q, $options: "i" } },
+      { "searchMetadata.searchTextEn": { $regex: q, $options: "i" } },
+      { "searchMetadata.allKeywords": { $regex: q, $options: "i" } },
     ],
   };
 
@@ -751,7 +850,7 @@ export const getDocumentsByCategory = asyncHandler(async (req, res) => {
 
   const query = {
     danhMuc: req.params.categoryId,
-    trangThai: "approved",
+    trangThaiDuyet: "da_duyet",
   };
 
   const [documents, total] = await Promise.all([
@@ -787,7 +886,7 @@ export const getDocumentsByUser = asyncHandler(async (req, res) => {
 
   const query = {
     nguoiTao: req.params.userId,
-    trangThai: "approved",
+    trangThaiDuyet: "da_duyet",
   };
 
   const [documents, total] = await Promise.all([
@@ -821,7 +920,7 @@ export const getPendingDocuments = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const skip = (page - 1) * limit;
 
-  const query = { trangThai: "pending" };
+  const query = { trangThaiDuyet: "cho_duyet" };
 
   const [documents, total] = await Promise.all([
     Document.find(query)
@@ -854,7 +953,7 @@ export const getRejectedDocuments = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const skip = (page - 1) * limit;
 
-  const query = { trangThai: "rejected" };
+  const query = { trangThaiDuyet: "tu_choi" };
 
   const [documents, total] = await Promise.all([
     Document.find(query)

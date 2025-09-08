@@ -25,6 +25,7 @@ const userActivitySchema = new mongoose.Schema(
         "xoa_danh_muc",
         // Thêm các enum values cho document operations
         "upload_tai_lieu",
+        "cap_nhat_tai_lieu",
         "duyet_tai_lieu",
         "tu_choi_tai_lieu",
         "xem_tai_lieu",

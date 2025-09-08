@@ -149,6 +149,16 @@ const documentSchema = new mongoose.Schema(
       enum: ["cho_duyet", "da_duyet", "tu_choi"],
       default: "cho_duyet",
     },
+    nguoiDuyet: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    ngayDuyet: {
+      type: Date,
+    },
+    lyDoTuChoi: {
+      type: String,
+    },
   },
   {
     timestamps: true,

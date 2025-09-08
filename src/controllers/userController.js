@@ -579,6 +579,56 @@ export const updateUserBalance = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Admin: Change user's password
+ * @route PUT /api/users/:id/password
+ * @access Private/Admin
+ */
+export const changeUserPasswordByAdmin = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  // Basic validation safeguard (validator should handle primary checks)
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+    return res.status(httpStatus.BAD_REQUEST).json({
+      success: false,
+      message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+    });
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    return res.status(httpStatus.NOT_FOUND).json({
+      success: false,
+      message: "Không tìm thấy người dùng",
+    });
+  }
+
+  // Set new password (will be hashed by pre-save hook)
+  user.matKhau = newPassword;
+  await user.save();
+
+  // Log admin activity
+  await UserActivity.create({
+    nguoiDung: req.user._id,
+    hanhDong: "cap_nhat_nguoi_dung",
+    chiTiet: {
+      updatedUserId: user._id,
+      updatedFields: ["matKhau"],
+      note: "Admin changed user password",
+    },
+    diaChiIP: req.ip,
+    thietBi: req.headers["user-agent"],
+  });
+
+  logger.info(`Password for user ${user._id} changed by admin ${req.user._id}`);
+
+  return res.status(httpStatus.OK).json({
+    success: true,
+    message: "Đổi mật khẩu thành công",
+  });
+});
+
+/**
  * Get user profile
  * @route GET /api/users/profile
  * @access Private

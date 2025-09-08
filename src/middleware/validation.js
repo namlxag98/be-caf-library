@@ -482,3 +482,25 @@ export const validateBalanceUpdate = (req, res, next) => {
 
   next();
 };
+
+export const validateAdminChangePassword = (req, res, next) => {
+  const { newPassword } = req.body;
+  const errors = [];
+
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+    errors.push({
+      field: "newPassword",
+      message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+    });
+  }
+
+  if (errors.length > 0) {
+    return res.status(httpStatus.BAD_REQUEST).json({
+      success: false,
+      message: "Dữ liệu không hợp lệ",
+      errors,
+    });
+  }
+
+  next();
+};

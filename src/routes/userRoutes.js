@@ -7,6 +7,7 @@ import {
   validateUserUpdate,
   validateBalanceUpdate,
   validateUserCreation,
+  validateAdminChangePassword,
 } from "../middleware/validation.js";
 import {
   getUsers,
@@ -17,6 +18,7 @@ import {
   getUserProfile,
   updateUserProfile,
   createUser,
+  changeUserPasswordByAdmin,
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -37,6 +39,13 @@ router.put(
   checkRole(["admin"]),
   validateBalanceUpdate,
   updateUserBalance
+);
+router.put(
+  "/:id/password",
+  auth,
+  checkRole(["admin"]),
+  validateAdminChangePassword,
+  changeUserPasswordByAdmin
 );
 
 export default router;

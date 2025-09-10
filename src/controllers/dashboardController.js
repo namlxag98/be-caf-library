@@ -455,3 +455,36 @@ export const getTopUsers = asyncHandler(async (req, res) => {
 export const getRevenueStatistics = getRevenueStats;
 export const getUserStatistics = getUserStats;
 export const getFileStatistics = getFileStats;
+
+/**
+ * Get current user's document count
+ * @route GET /api/dashboard/me/documents/count
+ * @access Private (any authenticated user)
+ */
+export const getMyDocumentsCount = asyncHandler(async (req, res) => {
+  const [total, approved, pending, rejected] = await Promise.all([
+    Document.countDocuments({ nguoiUpload: req.userId }),
+    Document.countDocuments({
+      nguoiUpload: req.userId,
+      trangThaiDuyet: "da_duyet",
+    }),
+    Document.countDocuments({
+      nguoiUpload: req.userId,
+      trangThaiDuyet: "cho_duyet",
+    }),
+    Document.countDocuments({
+      nguoiUpload: req.userId,
+      trangThaiDuyet: "tu_choi",
+    }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      total,
+      approved,
+      pending,
+      rejected,
+    },
+  });
+});

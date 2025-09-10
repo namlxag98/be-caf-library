@@ -11,12 +11,25 @@ import {
   getRecentActivities,
   getTopDownloads,
   getTopUsers,
+  getMyDocumentsCount,
 } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
-// All routes require authentication and admin/teacher role
-router.use(auth, checkRole(["admin", "teacher"]));
+// All admin/teacher dashboard routes require authentication and role
+router.use(
+  [
+    "/overview",
+    "/revenue",
+    "/users",
+    "/files",
+    "/activities",
+    "/top-downloads",
+    "/top-users",
+  ],
+  auth,
+  checkRole(["admin", "teacher"])
+);
 
 // Overview statistics
 router.get("/overview", getDashboardOverview);
@@ -28,5 +41,8 @@ router.get("/files", getFileStatistics);
 router.get("/activities", getRecentActivities);
 router.get("/top-downloads", getTopDownloads);
 router.get("/top-users", getTopUsers);
+
+// Current user's own stats
+router.get("/me/documents/count", auth, getMyDocumentsCount);
 
 export default router;
